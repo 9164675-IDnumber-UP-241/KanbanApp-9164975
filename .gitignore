@@ -1,0 +1,77 @@
+# =========================
+# 🔧 Gradle
+# =========================
+.gradle/
+build/
+*/build/
+
+# =========================
+# 🧠 Android Studio / IntelliJ
+# =========================
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Але залишаємо деякі налаштування (див. нижче)
+.idea/caches/
+.idea/libraries/
+.idea/modules.xml
+.idea/workspace.xml
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+
+# =========================
+# 📱 Android специфічне
+# =========================
+local.properties
+
+# Generated files
+captures/
+.externalNativeBuild/
+.cxx/
+
+# NDK
+obj/
+
+# =========================
+# 📦 APK / builds
+# =========================
+*.apk
+*.aab
+*.ap_
+*.aar
+
+# =========================
+# 🗂 Logs
+# =========================
+*.log
+
+# =========================
+# 🧪 Тести / coverage
+# =========================
+/coverage/
+/test-output/
+
+# =========================
+# 🧬 Kotlin
+# =========================
+*.kotlin_module
+
+# =========================
+# 🖥 OS файли
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# 🔐 Keystore (ВАЖЛИВО)
+# =========================
+*.jks
+*.keystore
+
+# =========================
+# 🧾 Firebase / Google services (опційно)
+# =========================
+# якщо проект публічний — краще ігнорити
+google-services.json

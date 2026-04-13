@@ -1,0 +1,17 @@
+# Build output
+/build/
+
+# Generated files
+/generated/
+out/
+
+# Android specific
+/captures/
+
+# Native build (NDK)
+/.externalNativeBuild/
+/.cxx/
+
+# Temporary files
+*.tmp
+*.temp
