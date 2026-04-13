@@ -38,7 +38,7 @@ fun TaskCardView(
         shape = RoundedCornerShape(8.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(8.dp)
+
             .combinedClickable(
                 onClick = { /* Нічого */ },
                 onLongClick = {
