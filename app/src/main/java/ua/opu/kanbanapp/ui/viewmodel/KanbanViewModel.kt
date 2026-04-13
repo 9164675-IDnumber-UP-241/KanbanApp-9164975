@@ -13,107 +13,104 @@ import ua.opu.kanbanapp.data.model.TaskStatus
 class KanbanViewModel : ViewModel() {
 
     // ===== КРОК 2: StateFlow — реактивний контейнер для стану =====
-
-    // private _uiState — ВНУТРІШНЯ (приватна)
-    //   ├─ MutableStateFlow — можемо писати нові значення
-    //   ├─ Тільки ViewModel змінює цей об'єкт
-    //   └─ UI не має доступу (захист від випадкових змін)
     private val _uiState = MutableStateFlow(KanbanState())
-
-    // public uiState — ЗОВНІШНЯ (публічна)
-    //   ├─ StateFlow — читаємо тільки (immutable для UI)
-    //   ├─ asStateFlow() — перетворює MutableStateFlow в безпечний StateFlow
-    //   └─ UI слухає зміни через collectAsState()
     val uiState: StateFlow<KanbanState> = _uiState.asStateFlow()
 
-    /*
-    Аналогія з Java/Kotlin:
-    ──────────────────────
-    private List<Card> _cards = new ArrayList<>();  // MutableStateFlow
-    public List<Card> getCards() { return _cards; }  // StateFlow через getter
 
-    Але StateFlow краще, бо:
-    ✅ Автоматично повідомляє UI про зміни
-    ✅ UI не може змінювати дані напряму
-    ✅ One-way data flow (only ViewModel can change)
-    */
+    // ===== КРОК 5: Переміщення карти в наступну колонку =====
+    fun moveCardForward(cardId: String) {
+        // ===== Беремо поточний список карт =====
+        val currentCards = _uiState.value.cards
 
-    // ===== КРОК 3: На старті завантажуємо тестові дані =====
-    init {
-        loadInitialCards()
+        // ===== Трансформуємо список: змінюємо статус потрібної карти =====
+        val updatedCards = currentCards.map { card ->
+            if (card.id == cardId) {
+                // ===== Знаходимо наступний статус =====
+                val nextStatus = when (card.status) {
+                    TaskStatus.TODO -> TaskStatus.IN_PROGRESS
+                    TaskStatus.IN_PROGRESS -> TaskStatus.REVIEW
+                    TaskStatus.REVIEW -> TaskStatus.DONE
+                    TaskStatus.DONE -> card.status  // DONE залишається DONE (не рухаємо далі!)
+                }
+                // ===== Створюємо КОПІЮ карти з новим статусом (імутабельність) =====
+                card.copy(status = nextStatus)
+            } else {
+                // ===== Решта карт залишаються без змін =====
+                card
+            }
+        }
+
+        // ===== Оновлюємо StateFlow новим списком =====
+        // Всі Composable'и, що слухають uiState, перерендеруються автоматично
+        _uiState.value = _uiState.value.copy(cards = updatedCards)
     }
 
-    // ===== КРОК 4: Приватний метод для завантаження даних =====
-    private fun loadInitialCards() {
-        // ===== Створюємо 4 тестові карточки (по одній в кожній колонці) =====
-        val testCards = listOf(
-            TaskCard("1", "Написати звіт", TaskStatus.TODO),              // Колонка 1
-            TaskCard("2", "Зателефонувати клієнту", TaskStatus.IN_PROGRESS),  // Колонка 2
-            TaskCard("3", "Оновити резюме", TaskStatus.REVIEW),           // Колонка 3
-            TaskCard("4", "Здати лабораторну", TaskStatus.DONE),          // Колонка 4
+    // ===== КРОК 6: Видалення карти =====
+    fun deleteCard(cardId: String) {
+        // ===== Беремо поточний список карт =====
+        val currentCards = _uiState.value.cards
+
+        // ===== Фільтруємо список: залишаємо всі карти крім видаленої =====
+        val updatedCards = currentCards.filter { it.id != cardId }
+
+        // ===== Оновлюємо StateFlow новим списком =====
+        _uiState.value = _uiState.value.copy(cards = updatedCards)
+    }
+
+    // ===== КРОК 7: Додавання нової карти =====
+    fun addNewCard(title: String) {
+        // ===== Валідація: не додаємо порожні карти =====
+        if (title.isBlank()) return
+
+        // ===== Беремо поточний список карт =====
+        val currentCards = _uiState.value.cards
+
+        // ===== Генеруємо унікальний ID: max(існуючих) + 1 =====
+        // Приклад: якщо є ID "1", "2", "4", то новий ID буде "5"
+        val newId = (currentCards.maxOfOrNull { it.id.toLongOrNull() ?: 0 } ?: 0) + 1
+
+        // ===== Створюємо нову карту (завжди стартує в TODO) =====
+        val newCard = TaskCard(
+            id = newId.toString(),
+            title = title.trim(),  // Видаляємо пробіли на початку/кінці
+            status = TaskStatus.TODO
         )
 
-        // ===== Оновлюємо StateFlow новим станом =====
-        // copy(cards = testCards) — створюємо новий KanbanState з картами
-        _uiState.value = _uiState.value.copy(cards = testCards)
+        // ===== Додаємо нову карту в список (+ оператор) =====
+        val updatedCards = currentCards + newCard
 
-        /*
-        Процес:
-        ───────
-        1. Створюється KanbanViewModel()
-        2. Виклик init {} блоку
-        3. loadInitialCards() додає 4 тестові карточки
-        4. _uiState.value = новий KanbanState з картами
-        5. StateFlow сповіщує UI: "дані змінилися!"
-        6. collectAsState() в Composable перехопить сигнал
-        7. Composable перерендериться з новими даними
-
-        Результат:
-        ──────────
-        UI автоматично показує 4 карточки при старті! ✅
-        */
+        // ===== Оновлюємо StateFlow новим списком =====
+        _uiState.value = _uiState.value.copy(cards = updatedCards)
     }
 }
 
 /*
-ЗАГАЛЬНИЙ ПОТІК ДАНИХ:
-──────────────────────
+РЕЗЮМЕ ОПЕРАЦІЙ:
+────────────────
 
-1. Користувач запускає додаток
-   ↓
-2. MainActivity створює KanbanViewModel()
-   ↓
-3. init {} блок KanbanViewModel запускає loadInitialCards()
-   ↓
-4. loadInitialCards() оновлює _uiState новими картами
-   ↓
-5. StateFlow автоматично випускає новий стан
-   ↓
-6. UI (KanbanScreen) слухає через collectAsState()
-   ↓
-7. Composable перерендериться з картами
-   ↓
-8. Користувач бачить 4 карточки на дошці! 🎉
+1. moveCardForward(cardId):
+   • TODO → IN_PROGRESS → REVIEW → DONE (стоп)
+   • map() для трансформації списку
+   • copy(status = nextStatus) для імутабельності
 
-АРХІТЕКТУРА:
+2. deleteCard(cardId):
+   • filter { it.id != cardId } видаляє карту
+   • Решта карт залишаються без змін
+
+3. addNewCard(title):
+   • Валідація (isBlank())
+   • Генерація ID (max + 1)
+   • + оператор для додавання
+   • Завжди стартує в TODO
+
+ІММУТАБЕЛЬНІСТЬ:
+────────────────
+✅ Не змінюємо карти напряму (card.status = ...)
+✅ Створюємо НОВІ версії через copy()
+✅ Не змінюємо список напряму (cards.add(...))
+✅ Створюємо НОВИЙ список через map/filter/+
+
+ПОТІК ДАНИХ:
 ────────────
-
-┌─────────────────────┐
-│ MainActivity        │
-│ (Entry Point)       │
-└──────────┬──────────┘
-           │
-           ├─ setContent {
-           │
-           └─ KanbanViewModel()
-              (управління даними)
-              │
-              ├─ _uiState (приватна)
-              │  └─ MutableStateFlow
-              │
-              ├─ uiState (публічна)
-              │  └─ StateFlow
-              │
-              └─ init { loadInitialCards() }
-                 (ініціалізація на старті)
+UI → callback → ViewModel.method() → StateFlow.update → UI rerender
 */
